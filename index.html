@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Weekly Kitchen — Meal Planner Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f4;
+    --bg-card: #fafaf9;
+    --bg-input: #ffffff;
+    --border: #d6d3d1;
+    --border-strong: #a8a29e;
+    --text: #1c1917;
+    --text-muted: #57534e;
+    --text-faint: #78716c;
+    --accent: #1c1917;
+    --accent-hover: #44403c;
+    --gold: #f59e0b;
+    --gold-fill: #fbbf24;
+    --red: #b91c1c;
+    --red-bg: #fef2f2;
+    --green: #047857;
+  }
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  header.site {
+    border-bottom: 2px solid var(--text);
+    background: var(--bg-card);
+  }
+  .container { max-width: 1024px; margin: 0 auto; padding: 0 24px; }
+  .hero {
+    padding: 32px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .eyebrow {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; background: var(--text); border-radius: 50%; }
+  h1 { font-size: 44px; line-height: 1; letter-spacing: -0.02em; font-weight: normal; }
+  h1 em { color: var(--text-muted); font-style: italic; }
+  .tagline { font-size: 14px; color: var(--text-muted); margin-top: 8px; max-width: 560px; }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg-card);
+    padding: 12px 20px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .btn-ghost {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 6px 0;
+  }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-danger { color: var(--red); font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; }
+  nav.tabs {
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 4px;
+    margin-top: 24px;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+  main { padding: 32px 0; min-height: 60vh; }
+  .error-box {
+    border: 1px solid #fca5a5;
+    background: var(--red-bg);
+    color: var(--red);
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    border: 1px dashed var(--border-strong);
+  }
+  .empty h2 { font-size: 26px; margin: 12px 0 8px; }
+  .empty p { color: var(--text-muted); font-size: 14px; max-width: 420px; margin: 0 auto; }
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .spinner.lg { width: 32px; height: 32px; border-width: 3px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .week-theme {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .week-theme h2 { font-size: 30px; font-style: italic; font-weight: normal; }
+
+  .day-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 700px) { .day-row { grid-template-columns: 1fr; } }
+  .day-label h3 { font-size: 24px; font-weight: normal; }
+  .day-label .rule { height: 1px; background: var(--border-strong); margin-top: 8px; }
+  .meals { display: grid; gap: 12px; }
+
+  .meal {
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  .meal-header {
+    width: 100%;
+    text-align: left;
+    padding: 14px;
+    background: transparent;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .meal-header:hover { background: #ebe9e6; }
+  .meal-meta {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .meal-name { font-size: 18px; font-weight: normal; line-height: 1.25; }
+  .meal-blurb { font-size: 13px; color: var(--text-muted); font-style: italic; margin-top: 4px; }
+  .meal-toggle { color: var(--text-faint); font-size: 12px; flex-shrink: 0; padding-top: 2px; }
+  .meal-body {
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+    background: white;
+  }
+  .meal-section { margin-top: 14px; }
+  .meal-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .meal-body ul, .meal-body ol { list-style: none; }
+  .meal-body li { font-size: 13.5px; padding: 3px 0; display: flex; gap: 8px; }
+  .meal-body li .marker { color: var(--text-faint); flex-shrink: 0; }
+  .rate-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+  .stars { display: flex; gap: 2px; }
+  .star {
+    background: none;
+    color: var(--border-strong);
+    transition: transform 0.15s;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .star.filled { color: var(--gold-fill); }
+  .star:hover { transform: scale(1.15); }
+
+  /* Grocery */
+  .grocery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 700px) { .grocery-grid { grid-template-columns: 1fr; } }
+  .cat-card { border: 1px solid var(--border); background: var(--bg-card); padding: 18px; }
+  .cat-card h3 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    font-weight: normal;
+  }
+  .cat-card li { display: flex; gap: 8px; padding: 4px 0; font-size: 13.5px; }
+  .cat-card input[type="checkbox"] { margin-top: 4px; accent-color: var(--text); }
+
+  /* Settings / Forms */
+  .form-group { margin-bottom: 20px; max-width: 540px; }
+  .form-group label { display: block; }
+  .form-group .form-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .form-group input, .form-group textarea {
+    font-family: inherit;
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    padding: 9px 12px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--text);
+  }
+  .form-group textarea { resize: vertical; }
+  .form-help { font-size: 12px; color: var(--text-muted); margin-top: 6px; font-style: italic; }
+  .api-key-banner {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: #78350f;
+  }
+  .api-key-banner a { color: #78350f; font-weight: bold; }
+
+  /* Section heads */
+  .section-head { margin-bottom: 24px; }
+  .section-head .eyebrow { letter-spacing: 0.3em; }
+  .section-head h2 { font-size: 30px; font-weight: normal; }
+
+  .pill {
+    display: inline-block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+
+  .footer {
+    border-top: 1px solid var(--border);
+    margin-top: 48px;
+    padding: 24px 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .footer em { font-style: italic; }
+
+  .history-list { display: grid; gap: 12px; }
+  .history-item {
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  .history-item .name { font-size: 17px; }
+  .history-item .date { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .learning-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .learning-grid { grid-template-columns: 1fr; } }
+  .signed-pos { color: var(--green); }
+  .signed-neg { color: var(--red); }
+  .signed-zero { color: var(--text-muted); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="container hero">
+    <div>
+      <div class="eyebrow"><span class="dot"></span><span>The Weekly Kitchen</span></div>
+      <h1>Meal Planner <em>Agent</em></h1>
+      <p class="tagline">Curates a week of lunches & dinners, builds your grocery list, and learns from your ratings to improve next week.</p>
+    </div>
+    <button id="generateBtn" class="btn-primary">
+      <span id="generateIcon">✦</span>
+      <span id="generateLabel">Plan My Week</span>
+    </button>
+  </div>
+  <div class="container">
+    <nav class="tabs">
+      <button class="tab active" data-tab="plan">This Week</button>
+      <button class="tab" data-tab="grocery">Grocery List</button>
+      <button class="tab" data-tab="learning">Taste Profile</button>
+      <button class="tab" data-tab="history">History</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <div id="apiKeyBanner" class="api-key-banner hidden">
+      <strong>Setup needed:</strong> Add your Anthropic API key in <a href="#" id="bannerSettingsLink">Settings</a> to generate plans.
+      Get one at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.
+      Your key is stored only in this browser.
+    </div>
+
+    <div id="errorBox" class="error-box hidden"></div>
+
+    <!-- PLAN TAB -->
+    <section id="tab-plan" class="tab-panel">
+      <div id="planEmpty" class="empty">
+        <h2>No plan yet</h2>
+        <p>Add your API key in Settings, then click <em>Plan My Week</em> to generate lunches, dinners, and a consolidated grocery list.</p>
+      </div>
+      <div id="planLoading" class="empty hidden">
+        <div class="spinner lg"></div>
+        <h2 style="margin-top:24px">Researching recipes…</h2>
+        <p>Curating your week.</p>
+      </div>
+      <div id="planContent" class="hidden">
+        <div class="week-theme">
+          <div class="eyebrow"><span class="dot"></span><span>This Week's Theme</span></div>
+          <h2 id="weekThemeText"></h2>
+        </div>
+        <div id="daysContainer"></div>
+      </div>
+    </section>
+
+    <!-- GROCERY TAB -->
+    <section id="tab-grocery" class="tab-panel hidden">
+      <div class="section-head">
+        <div class="eyebrow"><span class="dot"></span><span>Shopping</span></div>
+        <h2>Grocery List</h2>
+        <p class="tagline">Consolidated across all meals.</p>
+      </div>
+      <div id="groceryEmpty" class="empty"><p>Generate a plan first to see your grocery list.</p></div>
+      <div id="groceryGrid" class="grocery-grid hidden"></div>
+    </section>
+
+    <!-- LEARNING TAB -->
+    <section id="tab-learning" class="tab-panel hidden">
+      <div class="section-head">
+        <div class="eyebrow"><span class="dot"></span><span>What the Agent Has Learned</span></div>
+        <h2>Your Taste Profile</h2>
+        <p class="tagline">The agent uses these signals to bias next week's research.</p>
+      </div>
+      <div class="learning-grid" id="learningGrid"></div>
+    </section>
+
+    <!-- HISTORY TAB -->
+    <section id="tab-history" class="tab-panel hidden">
+      <div class="section-head" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px">
+        <div>
+          <div class="eyebrow"><span class="dot"></span><span>Past Weeks</span></div>
+          <h2>History</h2>
+        </div>
+        <button id="clearHistoryBtn" class="btn-danger">🗑 Clear all</button>
+      </div>
+      <div id="historyList"></div>
+    </section>
+
+    <!-- SETTINGS TAB -->
+    <section id="tab-settings" class="tab-panel hidden">
+      <div class="section-head">
+        <div class="eyebrow"><span class="dot"></span><span>Preferences</span></div>
+        <h2>Settings</h2>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span class="form-label">Anthropic API Key</span>
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off">
+        </label>
+        <p class="form-help">
+          Get one at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>. Stored only in your browser (localStorage). Never sent anywhere except Anthropic's API.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span class="form-label">Servings per meal</span>
+          <input type="number" id="servingsInput" min="1" max="8" value="2">
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span class="form-label">Restrictions / allergies</span>
+          <input type="text" id="restrictionsInput" placeholder="e.g. no shellfish, low sodium">
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span class="form-label">Notes for the agent</span>
+          <textarea id="notesInput" rows="3" placeholder="e.g. love spicy food, tired of pasta, weekend prep is fine"></textarea>
+        </label>
+      </div>
+
+      <p class="form-help">Saved automatically.</p>
+    </section>
+
+  </div>
+
+  <div class="container">
+    <div class="footer">
+      <span>The Weekly Kitchen · Run weekly · Learns from your ratings</span>
+      <em>Bon appétit.</em>
+    </div>
+  </div>
+</main>
+
+<script>
+// =============== STATE ===============
+const LS = {
+  apiKey: "mp.apiKey",
+  history: "mp.history",
+  scores: "mp.scores",
+  prefs:  "mp.prefs",
+};
+
+const state = {
+  apiKey: localStorage.getItem(LS.apiKey) || "",
+  history: JSON.parse(localStorage.getItem(LS.history) || "[]"),
+  scores:  JSON.parse(localStorage.getItem(LS.scores)  || "{}"),
+  prefs:   JSON.parse(localStorage.getItem(LS.prefs)   || '{"servings":2,"restrictions":"","notes":""}'),
+  plan: null,
+  loading: false,
+  activeTab: "plan",
+};
+if (state.history.length) state.plan = state.history[state.history.length - 1].plan;
+
+const persist = (key, val) => localStorage.setItem(key, typeof val === "string" ? val : JSON.stringify(val));
+
+// =============== LEARNING ===============
+function buildLearningSignal(scores) {
+  const entries = Object.entries(scores || {});
+  if (!entries.length) return { loved: [], disliked: [], cuisinePref: {}, proteinPref: {} };
+  const loved = [], disliked = [], cuisinePref = {}, proteinPref = {};
+  for (const [name, data] of entries) {
+    const avg = data.score;
+    if (avg >= 4) loved.push(name);
+    if (avg <= 2) disliked.push(name);
+    if (data.cuisine) cuisinePref[data.cuisine] = (cuisinePref[data.cuisine] || 0) + (avg - 3);
+    if (data.protein) proteinPref[data.protein] = (proteinPref[data.protein] || 0) + (avg - 3);
+  }
+  return { loved, disliked, cuisinePref, proteinPref };
+}
+
+function recentMealNames(history, weeks = 2) {
+  const recent = (history || []).slice(-weeks);
+  const names = new Set();
+  for (const h of recent) {
+    for (const day of h.plan?.days || []) {
+      if (day.lunch?.name) names.add(day.lunch.name);
+      if (day.dinner?.name) names.add(day.dinner.name);
+    }
+  }
+  return [...names];
+}
+
+// =============== API CALL ===============
+async function generatePlan() {
+  if (!state.apiKey) throw new Error("No API key set. Add one in Settings.");
+
+  const learning = buildLearningSignal(state.scores);
+  const avoidRepeat = recentMealNames(state.history, 2);
+
+  const prompt = `You are a meal-planning chef. Output ONLY valid JSON. No prose, no markdown fences, no commentary before or after. Start your response with { and end with }.
+
+The user's anchor cuisine vibe: Asian / Filipino / Korean (BBQ pork on rice, grilled salmon on rice, chicken adobo, stewed beef, curry rice with pork chop, BBQ kalbi). They also want VARIETY — include Mediterranean, Mexican, and other world cuisines.
+
+Plan 5 weekdays (Monday–Friday) with both LUNCH and DINNER for each day. 10 meals total, all distinct. Lunches: lighter, ≤30 min cook. Dinners: ≤60 min.
+
+Return EXACTLY this JSON shape:
+{
+  "weekTheme": "short evocative phrase",
+  "days": [
+    {
+      "day": "Monday",
+      "lunch":  { "name": "...", "cuisine": "...", "protein": "...", "cookTime": "25 min", "blurb": "1-sentence pitch", "ingredients": ["1 lb chicken thighs", "..."], "steps": ["Step 1...", "Step 2..."] },
+      "dinner": { "name": "...", "cuisine": "...", "protein": "...", "cookTime": "45 min", "blurb": "...", "ingredients": [...], "steps": [...] }
+    }
+  ],
+  "groceryList": {
+    "produce":  ["2 yellow onions", "..."],
+    "meat_seafood": ["2 lb chicken thighs", "..."],
+    "pantry":   ["soy sauce 1 bottle", "jasmine rice 2 cups", "..."],
+    "dairy_eggs": ["..."],
+    "frozen":   ["..."],
+    "other":    ["..."]
+  }
+}
+
+Rules:
+- Exactly 5 days: Monday, Tuesday, Wednesday, Thursday, Friday.
+- Consolidate the grocery list across all 10 meals; sum quantities sensibly.
+- Ingredient strings include quantities (e.g. "2 tbsp soy sauce").
+- Steps: 4–6 concise actions per recipe.
+- Don't repeat any meal name from the avoid list.
+- Bias toward loved cuisines/proteins; avoid disliked ones.
+- Mix: ~40% the user's anchor vibe, ~60% global variety.
+
+---
+
+Servings: ${state.prefs.servings || 2}. Notes: ${state.prefs.notes || "none"}. Restrictions: ${state.prefs.restrictions || "none"}.
+Loved styles: ${learning.loved.join(", ") || "none yet"}.
+Disliked styles: ${learning.disliked.join(", ") || "none yet"}.
+Avoid these meal names (recent): ${avoidRepeat.join(", ") || "none"}.
+
+Return ONLY the JSON object for 5 weekdays.`;
+
+  console.log("[MealPlanner] Calling API...");
+
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": state.apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+  } catch (e) {
+    console.error("[MealPlanner] Network error:", e);
+    throw new Error("Network error: " + e.message);
+  }
+
+  const bodyText = await res.text();
+  console.log("[MealPlanner] HTTP", res.status, "body length:", bodyText.length);
+
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${bodyText.slice(0, 400)}`);
+  }
+
+  let data;
+  try { data = JSON.parse(bodyText); }
+  catch { throw new Error("Response was not JSON: " + bodyText.slice(0, 200)); }
+
+  console.log("[MealPlanner] stop_reason:", data.stop_reason);
+
+  const text = (data.content || [])
+    .filter(b => b.type === "text")
+    .map(b => b.text)
+    .join("\n")
+    .trim();
+
+  if (!text) throw new Error(`Empty response. stop_reason=${data.stop_reason}`);
+
+  // Robust JSON extraction
+  const tryParse = s => { try { return JSON.parse(s); } catch { return null; } };
+  let cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  let parsed = null;
+
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end > start) parsed = tryParse(cleaned.slice(start, end + 1));
+  if (!parsed) parsed = tryParse(cleaned);
+
+  // Repair truncated JSON
+  if (!parsed && start !== -1) {
+    const partial = cleaned.slice(start);
+    let depth = 0, inStr = false, esc = false, lastValid = -1;
+    for (let i = 0; i < partial.length; i++) {
+      const c = partial[i];
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') inStr = !inStr;
+      if (inStr) continue;
+      if (c === "{" || c === "[") depth++;
+      if (c === "}" || c === "]") { depth--; if (depth === 0) lastValid = i; }
+    }
+    if (lastValid > 0) parsed = tryParse(partial.slice(0, lastValid + 1));
+  }
+
+  if (!parsed) throw new Error(`Could not parse JSON. Length=${text.length}, stop_reason=${data.stop_reason}. Check console.`);
+  if (!parsed.days || !Array.isArray(parsed.days) || !parsed.days.length) {
+    throw new Error("Plan missing days array.");
+  }
+  return parsed;
+}
+
+// =============== ACTIONS ===============
+async function runWeek() {
+  if (!state.apiKey) {
+    showError("Add your API key in Settings first.");
+    switchTab("settings");
+    return;
+  }
+  state.loading = true;
+  hideError();
+  render();
+  try {
+    const plan = await generatePlan();
+    const entry = { weekId: new Date().toISOString().slice(0, 10), generatedAt: Date.now(), plan };
+    state.history = [...state.history, entry].slice(-12);
+    state.plan = plan;
+    persist(LS.history, state.history);
+    state.activeTab = "plan";
+  } catch (e) {
+    console.error("[MealPlanner] runWeek failed:", e);
+    showError(e.message || String(e));
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+function rateMeal(meal, value) {
+  if (!meal?.name) return;
+  const existing = state.scores[meal.name];
+  const newCount = (existing?.count || 0) + 1;
+  const newScore = existing
+    ? ((existing.score * existing.count) + value) / newCount
+    : value;
+  state.scores[meal.name] = {
+    score: newScore,
+    count: newCount,
+    cuisine: meal.cuisine,
+    protein: meal.protein
+  };
+  persist(LS.scores, state.scores);
+  render();
+}
+
+function clearHistory() {
+  if (!confirm("Clear all history and ratings? This cannot be undone.")) return;
+  state.history = [];
+  state.scores = {};
+  state.plan = null;
+  persist(LS.history, state.history);
+  persist(LS.scores, state.scores);
+  render();
+}
+
+function switchTab(tab) {
+  state.activeTab = tab;
+  render();
+}
+
+function showError(msg) {
+  const el = document.getElementById("errorBox");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+function hideError() {
+  document.getElementById("errorBox").classList.add("hidden");
+}
+
+// =============== RENDER ===============
+function escapeHTML(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function starsHTML(value, mealKey, dayIdx) {
+  return `<div class="stars" data-meal-key="${mealKey}" data-day-idx="${dayIdx}">
+    ${[1,2,3,4,5].map(n => `<button class="star ${n <= value ? "filled" : ""}" data-value="${n}">★</button>`).join("")}
+  </div>`;
+}
+
+function mealHTML(meal, mealKey, dayIdx, isOpen) {
+  if (!meal) return "";
+  const score = state.scores[meal.name]?.score ? Math.round(state.scores[meal.name].score) : 0;
+  const ingredients = (meal.ingredients || []).map(i => `<li><span class="marker">·</span><span>${escapeHTML(i)}</span></li>`).join("");
+  const steps = (meal.steps || []).map((s, i) => `<li><span class="marker">${i+1}.</span><span>${escapeHTML(s)}</span></li>`).join("");
+
+  return `
+    <div class="meal" data-meal-id="${dayIdx}-${mealKey}">
+      <button class="meal-header" data-toggle="${dayIdx}-${mealKey}">
+        <div style="flex:1;min-width:0">
+          <div class="meal-meta">
+            ${mealKey === "lunch" ? "Lunch" : "Dinner"} · ${escapeHTML(meal.cuisine || "")} · ${escapeHTML(meal.cookTime || "")}
+          </div>
+          <div class="meal-name">${escapeHTML(meal.name)}</div>
+          <div class="meal-blurb">${escapeHTML(meal.blurb || "")}</div>
+        </div>
+        <span class="meal-toggle">${isOpen ? "▲" : "▼"}</span>
+      </button>
+      <div class="meal-body ${isOpen ? "" : "hidden"}">
+        <div class="meal-section">
+          <div class="meal-section-label">Ingredients</div>
+          <ul>${ingredients}</ul>
+        </div>
+        <div class="meal-section">
+          <div class="meal-section-label">Method</div>
+          <ol>${steps}</ol>
+        </div>
+        <div class="rate-row">
+          <span class="meal-section-label" style="margin:0">Rate after cooking</span>
+          ${starsHTML(score, mealKey, dayIdx)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+const openMeals = new Set(); // tracks which meals are expanded
+
+function renderPlan() {
+  const empty = document.getElementById("planEmpty");
+  const loading = document.getElementById("planLoading");
+  const content = document.getElementById("planContent");
+
+  empty.classList.add("hidden");
+  loading.classList.add("hidden");
+  content.classList.add("hidden");
+
+  if (state.loading && !state.plan) { loading.classList.remove("hidden"); return; }
+  if (!state.plan) { empty.classList.remove("hidden"); return; }
+
+  content.classList.remove("hidden");
+  document.getElementById("weekThemeText").textContent = state.plan.weekTheme || "This Week";
+
+  const container = document.getElementById("daysContainer");
+  container.innerHTML = (state.plan.days || []).map((day, idx) => `
+    <div class="day-row">
+      <div class="day-label">
+        <h3>${escapeHTML(day.day)}</h3>
+        <div class="rule"></div>
+      </div>
+      <div class="meals">
+        ${mealHTML(day.lunch, "lunch", idx, openMeals.has(`${idx}-lunch`))}
+        ${mealHTML(day.dinner, "dinner", idx, openMeals.has(`${idx}-dinner`))}
+      </div>
+    </div>
+  `).join("");
+
+  // attach handlers
+  container.querySelectorAll("[data-toggle]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-toggle");
+      if (openMeals.has(id)) openMeals.delete(id);
+      else openMeals.add(id);
+      renderPlan();
+    });
+  });
+  container.querySelectorAll(".stars").forEach(group => {
+    const dayIdx = parseInt(group.getAttribute("data-day-idx"), 10);
+    const mealKey = group.getAttribute("data-meal-key");
+    group.querySelectorAll(".star").forEach(star => {
+      star.addEventListener("click", e => {
+        e.stopPropagation();
+        const v = parseInt(star.getAttribute("data-value"), 10);
+        const meal = state.plan.days[dayIdx][mealKey];
+        rateMeal(meal, v);
+      });
+    });
+  });
+}
+
+function renderGrocery() {
+  const empty = document.getElementById("groceryEmpty");
+  const grid = document.getElementById("groceryGrid");
+  if (!state.plan?.groceryList) {
+    empty.classList.remove("hidden");
+    grid.classList.add("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  grid.classList.remove("hidden");
+  const labels = {
+    produce: "Produce",
+    meat_seafood: "Meat & Seafood",
+    pantry: "Pantry",
+    dairy_eggs: "Dairy & Eggs",
+    frozen: "Frozen",
+    other: "Other"
+  };
+  grid.innerHTML = Object.entries(state.plan.groceryList)
+    .filter(([_, items]) => items?.length)
+    .map(([cat, items]) => `
+      <div class="cat-card">
+        <h3>${labels[cat] || cat}</h3>
+        <ul>
+          ${items.map(it => `<li><input type="checkbox"><span>${escapeHTML(it)}</span></li>`).join("")}
+        </ul>
+      </div>
+    `).join("");
+}
+
+function renderLearning() {
+  const learning = buildLearningSignal(state.scores);
+  const fmtSentiment = obj => {
+    const entries = Object.entries(obj).sort((a,b) => b[1]-a[1]);
+    if (!entries.length) return `<p style="font-style:italic;color:var(--text-muted);font-size:13px">Not enough ratings yet.</p>`;
+    return `<ul>${entries.map(([k,v]) => `
+      <li style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px">
+        <span>${escapeHTML(k)}</span>
+        <span class="${v > 0 ? "signed-pos" : v < 0 ? "signed-neg" : "signed-zero"}">${v > 0 ? "+" : ""}${v.toFixed(1)}</span>
+      </li>`).join("")}</ul>`;
+  };
+  const fmtList = arr =>
+    arr.length
+      ? `<ul>${arr.map(n => `<li style="padding:3px 0;font-size:13.5px">· ${escapeHTML(n)}</li>`).join("")}</ul>`
+      : `<p style="font-style:italic;color:var(--text-muted);font-size:13px">Rate meals to teach the agent.</p>`;
+
+  document.getElementById("learningGrid").innerHTML = `
+    <div class="cat-card"><h3>Loved (4–5★)</h3>${fmtList(learning.loved)}</div>
+    <div class="cat-card"><h3>Disliked (1–2★)</h3>${fmtList(learning.disliked)}</div>
+    <div class="cat-card"><h3>Cuisine Sentiment</h3>${fmtSentiment(learning.cuisinePref)}</div>
+    <div class="cat-card"><h3>Protein Sentiment</h3>${fmtSentiment(learning.proteinPref)}</div>
+  `;
+}
+
+function renderHistory() {
+  const list = document.getElementById("historyList");
+  if (!state.history.length) {
+    list.innerHTML = `<p style="font-style:italic;color:var(--text-muted);font-size:13px">No past weeks yet.</p>`;
+    return;
+  }
+  list.innerHTML = `<div class="history-list">
+    ${[...state.history].reverse().map((h, i) => {
+      const realIdx = state.history.length - 1 - i;
+      return `
+        <div class="history-item">
+          <div>
+            <div class="name">${escapeHTML(h.plan?.weekTheme || "Untitled week")}</div>
+            <div class="date">${new Date(h.generatedAt).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
+          </div>
+          <button class="btn-ghost" data-history-idx="${realIdx}">↻ View</button>
+        </div>`;
+    }).join("")}
+  </div>`;
+  list.querySelectorAll("[data-history-idx]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.getAttribute("data-history-idx"), 10);
+      state.plan = state.history[idx].plan;
+      switchTab("plan");
+    });
+  });
+}
+
+function renderSettings() {
+  document.getElementById("apiKeyInput").value = state.apiKey;
+  document.getElementById("servingsInput").value = state.prefs.servings;
+  document.getElementById("restrictionsInput").value = state.prefs.restrictions;
+  document.getElementById("notesInput").value = state.prefs.notes;
+}
+
+function render() {
+  // API key banner
+  document.getElementById("apiKeyBanner").classList.toggle("hidden", !!state.apiKey);
+
+  // Generate button
+  const btn = document.getElementById("generateBtn");
+  const lbl = document.getElementById("generateLabel");
+  const ic = document.getElementById("generateIcon");
+  btn.disabled = state.loading;
+  if (state.loading) {
+    ic.outerHTML = `<span id="generateIcon" class="spinner"></span>`;
+    lbl.textContent = "Cooking up your week…";
+  } else {
+    document.getElementById("generateIcon").outerHTML = `<span id="generateIcon">✦</span>`;
+    lbl.textContent = state.history.length ? "Generate New Week" : "Plan My Week";
+  }
+
+  // Tabs
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.getAttribute("data-tab") === state.activeTab);
+  });
+  document.querySelectorAll(".tab-panel").forEach(p => {
+    p.classList.toggle("hidden", p.id !== `tab-${state.activeTab}`);
+  });
+
+  if (state.activeTab === "plan") renderPlan();
+  if (state.activeTab === "grocery") renderGrocery();
+  if (state.activeTab === "learning") renderLearning();
+  if (state.activeTab === "history") renderHistory();
+  if (state.activeTab === "settings") renderSettings();
+}
+
+// =============== EVENT WIRING ===============
+document.getElementById("generateBtn").addEventListener("click", runWeek);
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => switchTab(t.getAttribute("data-tab")));
+});
+document.getElementById("clearHistoryBtn").addEventListener("click", clearHistory);
+document.getElementById("bannerSettingsLink").addEventListener("click", e => {
+  e.preventDefault();
+  switchTab("settings");
+});
+
+// Settings inputs (live save)
+document.getElementById("apiKeyInput").addEventListener("input", e => {
+  state.apiKey = e.target.value.trim();
+  persist(LS.apiKey, state.apiKey);
+  document.getElementById("apiKeyBanner").classList.toggle("hidden", !!state.apiKey);
+});
+document.getElementById("servingsInput").addEventListener("input", e => {
+  state.prefs.servings = parseInt(e.target.value || "2", 10);
+  persist(LS.prefs, state.prefs);
+});
+document.getElementById("restrictionsInput").addEventListener("input", e => {
+  state.prefs.restrictions = e.target.value;
+  persist(LS.prefs, state.prefs);
+});
+document.getElementById("notesInput").addEventListener("input", e => {
+  state.prefs.notes = e.target.value;
+  persist(LS.prefs, state.prefs);
+});
+
+// Initial render
+render();
+</script>
+
+</body>
+</html>
