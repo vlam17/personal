@@ -1,593 +1,734 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Increment Capital</title>
-  <meta name="description" content="Increment Capital is a technology investment firm empowering visionary founders from Seed to Global Scale." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Weekly Kitchen — Meal Planner Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f1; --card: #fafaf7;
+    --ink: #1c1917; --ink-2: #44403c; --muted: #78716c;
+    --line: #d6d3d1; --line-soft: #e7e5e4;
+    --good: #047857; --bad: #b91c1c; --gold: #d97706;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: Georgia, "Times New Roman", serif; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  header.masthead { border-bottom: 2px solid var(--ink); background: #fafaf7; padding: 36px 0 28px; }
+  .row { display: flex; gap: 16px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; }
+  .eyebrow { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  h1 { font-size: 44px; font-weight: 400; letter-spacing: -0.02em; line-height: 1; }
+  h1 em { color: var(--muted); font-style: italic; font-weight: 400; }
+  .subtitle { color: var(--ink-2); font-size: 14px; margin-top: 10px; max-width: 560px; line-height: 1.5; }
+
+  button.btn { background: var(--ink); color: var(--bg); border: none; padding: 13px 22px; cursor: pointer; font-family: inherit; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; transition: background 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+  button.btn:hover { background: var(--ink-2); }
+  button.btn:disabled { opacity: 0.5; cursor: wait; }
+  button.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button.btn.ghost:hover { background: var(--line-soft); }
+  button.btn.danger { background: transparent; color: var(--bad); border: none; padding: 6px 0; font-size: 11px; letter-spacing: 0.18em; }
+  button.btn.danger:hover { color: #7f1d1d; }
+
+  nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 24px; overflow-x: auto; }
+  nav.tabs button { background: none; border: none; cursor: pointer; padding: 10px 16px; font-family: inherit; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color 0.15s; }
+  nav.tabs button.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+  nav.tabs button:hover { color: var(--ink); }
+
+  main { padding: 32px 0 80px; }
+  .empty { text-align: center; padding: 60px 20px; border: 1px dashed var(--line); }
+  .empty h2 { font-size: 26px; margin-bottom: 8px; font-weight: 400; }
+  .empty p { color: var(--muted); font-size: 14px; max-width: 460px; margin: 0 auto; line-height: 1.6; }
+
+  .week-theme { padding-bottom: 24px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+  .week-theme h2 { font-size: 30px; font-style: italic; font-weight: 400; }
+
+  .day-row { display: grid; grid-template-columns: 130px 1fr; gap: 16px; margin-bottom: 20px; align-items: start; }
+  @media (max-width: 640px) { .day-row { grid-template-columns: 1fr; gap: 8px; } }
+  .day-label h3 { font-size: 24px; font-weight: 400; }
+  .day-label .underline { height: 1px; background: var(--line); margin-top: 8px; }
+
+  .meal-card { border: 1px solid var(--line-soft); background: var(--card); margin-bottom: 12px; }
+  .meal-head { width: 100%; text-align: left; cursor: pointer; background: none; border: none; padding: 14px; display: flex; gap: 12px; align-items: flex-start; font-family: inherit; transition: background 0.15s; }
+  .meal-head:hover { background: var(--line-soft); }
+  .meal-info { flex: 1; min-width: 0; }
+  .meal-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
+  .meal-meta .dot { color: #a8a29e; }
+  .meal-meta .badge { background: var(--line-soft); padding: 1px 6px; border-radius: 2px; }
+  .meal-name { font-size: 18px; font-weight: 400; line-height: 1.2; color: var(--ink); }
+  .meal-blurb { font-style: italic; color: var(--ink-2); font-size: 13px; margin-top: 6px; }
+  .meal-chev { color: var(--muted); flex-shrink: 0; margin-top: 4px; font-size: 12px; }
+
+  .meal-body { display: none; padding: 4px 18px 18px; border-top: 1px solid var(--line-soft); background: white; }
+  .meal-card.open .meal-body { display: block; }
+  .meal-body h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); margin: 16px 0 8px; }
+  .meal-body ul, .meal-body ol { padding-left: 0; list-style: none; }
+  .meal-body li { font-size: 14px; line-height: 1.5; margin-bottom: 4px; color: var(--ink-2); display: flex; gap: 8px; }
+  .meal-body ol li::before { counter-increment: step; content: counter(step) "."; font-family: monospace; color: var(--muted); flex-shrink: 0; }
+  .meal-body ol { counter-reset: step; }
+  .meal-body ul li::before { content: "·"; color: var(--muted); flex-shrink: 0; }
+  .tip { background: #fef9c3; border-left: 3px solid var(--gold); padding: 10px 12px; margin-top: 12px; font-size: 13px; color: var(--ink-2); font-style: italic; }
+
+  .rate-row { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line-soft); }
+  .rate-row .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
+  .stars { display: flex; gap: 2px; }
+  .stars button { background: none; border: none; cursor: pointer; padding: 2px; transition: transform 0.1s; }
+  .stars button:hover { transform: scale(1.15); }
+  .star { width: 18px; height: 18px; display: block; }
+  .star.filled { fill: var(--gold); stroke: var(--gold); }
+  .star.empty { fill: none; stroke: var(--line); }
+
+  .grocery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 640px) { .grocery-grid { grid-template-columns: 1fr; } }
+  .grocery-card { border: 1px solid var(--line); background: var(--card); padding: 20px; }
+  .grocery-card h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3em; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .grocery-card ul { list-style: none; }
+  .grocery-card li { font-size: 14px; padding: 5px 0; display: flex; gap: 8px; align-items: flex-start; }
+  .grocery-card input[type=checkbox] { margin-top: 4px; accent-color: var(--ink); }
+
+  .stat-card { border: 1px solid var(--line); background: var(--card); padding: 20px; }
+  .stat-card h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3em; color: var(--muted); margin-bottom: 12px; }
+  .stat-card ul { list-style: none; }
+  .stat-card li { font-size: 14px; padding: 4px 0; }
+  .stat-row { display: flex; justify-content: space-between; }
+  .pos { color: var(--good); }
+  .neg { color: var(--bad); }
+  .neu { color: var(--muted); }
+
+  .history-item { border: 1px solid var(--line); background: var(--card); padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .history-item h4 { font-size: 18px; font-weight: 400; margin-bottom: 4px; }
+  .history-item p { font-size: 12px; color: var(--muted); }
+
+  label.field { display: block; margin-bottom: 18px; }
+  label.field span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
+  label.field input, label.field textarea { width: 100%; margin-top: 4px; padding: 10px 12px; font-family: inherit; font-size: 14px; background: white; border: 1px solid var(--line); }
+  label.field input:focus, label.field textarea:focus { outline: none; border-color: var(--ink); }
+  label.field textarea { resize: none; }
+
+  .error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(28, 25, 23, 0.5); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg); max-width: 520px; width: 100%; padding: 32px; border: 1px solid var(--line); }
+  .modal h2 { font-size: 26px; font-weight: 400; margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: var(--ink-2); line-height: 1.6; margin-bottom: 16px; }
+
+  footer { border-top: 1px solid var(--line); padding: 20px 0; font-size: 12px; color: var(--muted); }
+  footer .row { font-style: italic; }
+
+  .loading-block { text-align: center; padding: 60px 20px; }
+  .spinner { width: 28px; height: 28px; border: 2px solid var(--line); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .grocery-actions { display: flex; gap: 8px; margin-bottom: 20px; }
+  .config-warn { background: #fef9c3; border: 1px solid #fde68a; color: #854d0e; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
+  code { background: var(--line-soft); padding: 1px 6px; border-radius: 2px; font-family: ui-monospace, monospace; font-size: 12px; }
+</style>
 </head>
 <body>
 
-  <!-- ========== SVG Logo Symbol (reusable) ========== -->
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <defs>
-      <symbol id="ic-logo" viewBox="0 0 400 64">
-        <!-- Wordmark -->
-        <text x="2" y="46" class="logo-word-1">increment</text>
-        <text x="190" y="46" class="logo-word-2">capital</text>
-        <!-- Bar chart mark -->
-        <rect x="330" y="28" width="6" height="22" fill="#1e6978" rx="1" />
-        <rect x="340" y="18" width="6" height="32" fill="#2e9e5f" rx="1" />
-        <rect x="350" y="8"  width="6" height="42" fill="#2876c4" rx="1" />
-        <!-- ++ superscript -->
-        <text x="362" y="16" class="logo-plus">++</text>
-      </symbol>
-    </defs>
-  </svg>
+<header class="masthead">
+  <div class="wrap">
+    <div class="row">
+      <div>
+        <div class="eyebrow">◆ The Weekly Kitchen</div>
+        <h1>Meal Planner <em>Agent</em></h1>
+        <p class="subtitle">Researches recipes worldwide, plans school-friendly lunches and at-home dinners, builds a consolidated grocery list, and learns from your ratings to refine future weeks.</p>
+      </div>
+      <button class="btn" id="generateBtn">✦ <span id="generateLabel">Plan My First Week</span></button>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="plan" class="active">This Week</button>
+      <button data-tab="grocery">Grocery List</button>
+      <button data-tab="learning">Taste Profile</button>
+      <button data-tab="history">History</button>
+      <button data-tab="settings">Settings</button>
+    </nav>
+  </div>
+</header>
 
-  <!-- ========== Scroll Progress Bar ========== -->
-  <div class="scroll-progress" id="scrollProgress"></div>
+<main class="wrap">
+  <div id="errorBox"></div>
+  <div id="content"></div>
+</main>
 
-  <!-- ========== Grid Overlay (tech texture) ========== -->
-  <div class="grid-overlay" aria-hidden="true"></div>
+<footer>
+  <div class="wrap row">
+    <span>The Weekly Kitchen · Run weekly · Learns from your ratings</span>
+    <span>Bon appétit.</span>
+  </div>
+</footer>
 
-  <!-- ========== HEADER ========== -->
-  <header class="header" id="header">
-    <div class="container header__inner">
-      <a href="#" class="logo" aria-label="Increment Capital home">
-        <svg class="logo-svg"><use href="#ic-logo"/></svg>
-      </a>
-      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
-        <span></span><span></span><span></span>
+<!-- Password modal (only shown if Worker requires one) -->
+<div class="modal-bg" id="passwordModal">
+  <div class="modal">
+    <h2>Access password</h2>
+    <p>This planner is password-protected. Enter the password to continue. It's stored only in your browser.</p>
+    <label class="field">
+      <span>Password</span>
+      <input type="password" id="passwordInput" autocomplete="off"/>
+    </label>
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+      <button class="btn" id="savePasswordBtn">Save</button>
+      <button class="btn ghost" id="cancelPasswordBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — edit this once after deploying the Worker.
+// ============================================================
+const WORKER_URL = "https://meal-planner-proxy.vlallstar.workers.dev/plan";
+
+// ============================================================
+// STATE & STORAGE
+// ============================================================
+const K_HISTORY = "mp:history:v5";
+const K_SCORES  = "mp:scores:v5";
+const K_PREFS   = "mp:prefs:v5";
+const K_PWD     = "mp:pwd:v1";
+
+const state = {
+  tab: "plan",
+  loading: false,
+  history: load(K_HISTORY, []),
+  scores: load(K_SCORES, {}),
+  prefs: load(K_PREFS, { daysCount: 5, restrictions: "", notes: "" }),
+  plan: null,
+  openMeals: new Set(),
+  password: localStorage.getItem(K_PWD) || ""
+};
+state.plan = state.history.length ? state.history[state.history.length - 1].plan : null;
+
+function load(key, fallback) {
+  try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
+  catch { return fallback; }
+}
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.error(e); } }
+
+// ============================================================
+// LEARNING / SCORING SIGNALS
+// ============================================================
+function buildLearningSignal(scores) {
+  const loved = [], disliked = [];
+  const cuisinePref = {}, proteinPref = {};
+  for (const [name, d] of Object.entries(scores || {})) {
+    if (d.score >= 4) loved.push(name);
+    if (d.score <= 2) disliked.push(name);
+    if (d.cuisine) cuisinePref[d.cuisine] = (cuisinePref[d.cuisine] || 0) + (d.score - 3);
+    if (d.protein) proteinPref[d.protein] = (proteinPref[d.protein] || 0) + (d.score - 3);
+  }
+  return { loved, disliked, cuisinePref, proteinPref };
+}
+
+function recentMeals(history, weeks = 2) {
+  const recent = (history || []).slice(-weeks);
+  const names = [];
+  for (const h of recent) {
+    for (const day of h.plan?.days || []) {
+      if (day.lunch?.name) names.push(day.lunch.name);
+      if (day.dinner?.name) names.push(day.dinner.name);
+    }
+  }
+  return names;
+}
+
+// ============================================================
+// PROMPT — drives the agent's behavior
+// ============================================================
+function buildPrompt() {
+  const learning = buildLearningSignal(state.scores);
+  const avoidRepeat = recentMeals(state.history, 2);
+  const days = state.prefs.daysCount || 5;
+  const dayNames = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].slice(0, days);
+
+  return `You are a meal-planning chef. Output ONLY a JSON object. No prose, no markdown fences. Begin with { and end with }.
+
+CUISINE PROFILE:
+- ANCHOR (about 50% of meals): Japanese and Korean. Examples: BBQ pork on rice (char siu), grilled salmon on rice, miso salmon, teriyaki chicken, Japanese curry rice with pork chop (katsu curry), BBQ kalbi, bibimbap, gyudon, sushi rolls (chicken-avocado, salmon-avocado, spicy tuna), oyakodon, yakisoba.
+- VARIETY (about 50%): Mediterranean, Mexican, Italian, Thai, Vietnamese, Indian, Middle Eastern. NO Filipino dishes.
+
+LUNCH RULES (school-pack lunches — must travel well):
+- Designed to be cooked the night before or that morning, packed in a container, and eaten 4–6 hours later cold or at room temperature.
+- Avoid anything that wilts, gets soggy, smells strong when reheated, or only tastes good piping hot.
+- Good: rice bowls (hot rice cools fine), sushi rolls, onigiri, cold noodle dishes (soba, somen, peanut noodles), bento-style boxes, wraps, hearty pasta salads, grain bowls, kimbap, Mediterranean grain salads, frittata slices, savory hand pies.
+- Avoid: deep-fried items that go soggy, leafy salads that wilt under dressing, runny sauces, anything with a fragile texture, soups, super-melty cheese dishes.
+- Each lunch recipe must include a "packTip" field: a one-sentence tip on how to pack it for transport.
+- Cook time ≤ 35 min.
+
+DINNER RULES (eat-at-home):
+- Designed to be cooked and eaten right away at home. Hot-and-fresh formats are encouraged.
+- Can include grilled/seared/fried items, dishes with crispy textures, soups, stews, things with melty cheese, anything that benefits from being just-cooked.
+- Cook time ≤ 60 min. "packTip" should be empty string for dinners.
+
+PLAN ${days} DAYS (${dayNames.join(", ")}). Each day has BOTH lunch AND dinner. ${days * 2} distinct meals total — no repeats within the week.
+
+Required JSON shape:
+{
+  "weekTheme": "short evocative phrase",
+  "days": [
+    {
+      "day": "Monday",
+      "lunch":  { "name": "...", "cuisine": "...", "protein": "...", "cookTime": "25 min", "blurb": "1-sentence pitch", "packTip": "Pack rice and salmon separately, add nori sheet at lunchtime.", "ingredients": ["1 lb chicken thighs", "..."], "steps": ["Step 1", "..."] },
+      "dinner": { "name": "...", "cuisine": "...", "protein": "...", "cookTime": "45 min", "blurb": "...", "packTip": "", "ingredients": [...], "steps": [...] }
+    }
+  ],
+  "groceryList": {
+    "produce":      ["2 yellow onions", "..."],
+    "meat_seafood": ["2 lb chicken thighs", "..."],
+    "pantry":       ["soy sauce", "..."],
+    "dairy_eggs":   ["..."],
+    "frozen":       ["..."],
+    "other":        ["..."]
+  }
+}
+
+OTHER RULES:
+- Servings: 2 people per meal.
+- Restrictions: ${state.prefs.restrictions || "(none)"}
+- Notes: ${state.prefs.notes || "(none)"}
+- Consolidate the grocery list across all ${days * 2} meals (combine duplicates, sum quantities).
+- Ingredient strings include quantities (e.g. "2 tbsp soy sauce", "1 lb pork shoulder").
+- Steps: 4–6 concise actions per recipe.
+- Include at least 2 sushi-roll or rice-ball lunches across the week (chicken-avocado, salmon-avocado, spicy tuna, or similar).
+
+LEARNING SIGNAL:
+- Loved styles (favor): ${learning.loved.join(", ") || "(none yet)"}
+- Disliked styles (avoid similar): ${learning.disliked.join(", ") || "(none)"}
+- Cuisine sentiment: ${JSON.stringify(learning.cuisinePref)}
+- Protein sentiment: ${JSON.stringify(learning.proteinPref)}
+- AVOID repeating these recent meal names: ${avoidRepeat.join(", ") || "(none)"}
+
+Return ONLY the JSON object.`;
+}
+
+// ============================================================
+// API CALL — through Cloudflare Worker proxy
+// ============================================================
+async function generatePlan() {
+  if (!WORKER_URL || WORKER_URL.includes("YOUR-WORKER-NAME")) {
+    throw new Error("WORKER_URL not configured. Edit index.html and set WORKER_URL to your deployed Cloudflare Worker URL.");
+  }
+
+  const headers = { "Content-Type": "application/json" };
+  if (state.password) headers["X-Access-Password"] = state.password;
+
+  const res = await fetch(WORKER_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ prompt: buildPrompt(), max_tokens: 16000 })
+  });
+
+  const bodyText = await res.text();
+
+  if (res.status === 401) {
+    state.password = "";
+    localStorage.removeItem(K_PWD);
+    openPasswordModal();
+    throw new Error("Password required or incorrect.");
+  }
+
+  if (!res.ok) {
+    let detail = bodyText.slice(0, 400);
+    try { const j = JSON.parse(bodyText); detail = j.error?.message || j.error || detail; } catch {}
+    throw new Error(`Request failed (${res.status}): ${detail}`);
+  }
+
+  let data;
+  try { data = JSON.parse(bodyText); }
+  catch { throw new Error(`Server returned non-JSON: ${bodyText.slice(0,200)}`); }
+
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+  if (!text) throw new Error(`Empty response. stop_reason=${data.stop_reason}`);
+
+  let cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+
+  let parsed = null;
+  if (start !== -1 && end > start) {
+    try { parsed = JSON.parse(cleaned.slice(start, end + 1)); } catch {}
+  }
+  if (!parsed) {
+    // Repair truncated JSON
+    const partial = cleaned.slice(start);
+    let depth = 0, inStr = false, esc = false, lastValid = -1;
+    for (let i = 0; i < partial.length; i++) {
+      const c = partial[i];
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') inStr = !inStr;
+      if (inStr) continue;
+      if (c === "{" || c === "[") depth++;
+      if (c === "}" || c === "]") { depth--; if (depth === 0) lastValid = i; }
+    }
+    if (lastValid > 0) {
+      try { parsed = JSON.parse(partial.slice(0, lastValid + 1)); } catch {}
+    }
+  }
+  if (!parsed) throw new Error(`Couldn't parse JSON. First 200 chars: ${cleaned.slice(0,200)}`);
+  if (!parsed.days || !Array.isArray(parsed.days)) throw new Error("Plan missing days array.");
+  return parsed;
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+async function runWeek() {
+  state.loading = true; renderError(""); render();
+  try {
+    const plan = await generatePlan();
+    const entry = { weekId: new Date().toISOString().slice(0,10), generatedAt: Date.now(), plan };
+    state.history = [...state.history, entry].slice(-12);
+    state.plan = plan;
+    state.openMeals.clear();
+    save(K_HISTORY, state.history);
+    state.tab = "plan";
+  } catch (e) {
+    console.error(e);
+    renderError(e.message || "Something went wrong.");
+  } finally {
+    state.loading = false; render();
+  }
+}
+
+function rateMeal(meal, value) {
+  if (!meal?.name) return;
+  const ex = state.scores[meal.name];
+  const newCount = (ex?.count || 0) + 1;
+  const newScore = ex ? ((ex.score * ex.count) + value) / newCount : value;
+  state.scores[meal.name] = { score: newScore, count: newCount, cuisine: meal.cuisine, protein: meal.protein };
+  save(K_SCORES, state.scores);
+  render();
+}
+
+function clearAll() {
+  if (!confirm("Clear all history and ratings? This can't be undone.")) return;
+  state.history = []; state.scores = {}; state.plan = null;
+  save(K_HISTORY, []); save(K_SCORES, {});
+  render();
+}
+
+function setTab(t) { state.tab = t; render(); }
+function toggleMeal(id) {
+  if (state.openMeals.has(id)) state.openMeals.delete(id);
+  else state.openMeals.add(id);
+  render();
+}
+
+function openPasswordModal() {
+  document.getElementById("passwordModal").classList.add("open");
+  document.getElementById("passwordInput").value = state.password || "";
+  document.getElementById("passwordInput").focus();
+}
+function closePasswordModal() {
+  document.getElementById("passwordModal").classList.remove("open");
+}
+document.getElementById("savePasswordBtn").addEventListener("click", () => {
+  const v = document.getElementById("passwordInput").value.trim();
+  if (!v) return;
+  state.password = v;
+  localStorage.setItem(K_PWD, v);
+  closePasswordModal();
+  runWeek();
+});
+document.getElementById("cancelPasswordBtn").addEventListener("click", closePasswordModal);
+document.getElementById("passwordInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("savePasswordBtn").click();
+});
+
+document.getElementById("generateBtn").addEventListener("click", runWeek);
+document.getElementById("tabs").addEventListener("click", (e) => {
+  if (e.target.dataset.tab) setTab(e.target.dataset.tab);
+});
+
+// ============================================================
+// RENDERING
+// ============================================================
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+
+function renderError(msg) {
+  const box = document.getElementById("errorBox");
+  if (!msg) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="error">${esc(msg)}</div>`;
+}
+
+function starsHTML(value, mealNameKey) {
+  let out = `<div class="stars" data-meal-key="${esc(mealNameKey)}">`;
+  for (let n = 1; n <= 5; n++) {
+    const filled = n <= value;
+    out += `<button data-rate="${n}" aria-label="${n} stars">
+      <svg viewBox="0 0 24 24" class="star ${filled ? 'filled' : 'empty'}" stroke-width="1.5">
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+      </svg>
+    </button>`;
+  }
+  return out + `</div>`;
+}
+
+function renderMealCard(meal, mealKey, dayIdx) {
+  if (!meal) return "";
+  const id = `${dayIdx}-${mealKey}`;
+  const isOpen = state.openMeals.has(id);
+  const score = state.scores[meal.name]?.score ? Math.round(state.scores[meal.name].score) : 0;
+
+  const ingredients = (meal.ingredients || []).map(i => `<li>${esc(i)}</li>`).join("");
+  const steps = (meal.steps || []).map(s => `<li>${esc(s)}</li>`).join("");
+  const packTipHTML = mealKey === "lunch" && meal.packTip
+    ? `<div class="tip">📦 Pack tip — ${esc(meal.packTip)}</div>` : "";
+
+  return `
+    <div class="meal-card ${isOpen ? 'open' : ''}" data-id="${id}">
+      <button class="meal-head" data-toggle="${id}">
+        <div class="meal-info">
+          <div class="meal-meta">
+            <span class="badge">${mealKey === 'lunch' ? 'Lunch · pack' : 'Dinner · home'}</span>
+            <span>${esc(meal.cuisine || '')}</span>
+            <span class="dot">·</span>
+            <span>${esc(meal.cookTime || '')}</span>
+          </div>
+          <div class="meal-name">${esc(meal.name)}</div>
+          <div class="meal-blurb">${esc(meal.blurb || '')}</div>
+        </div>
+        <div class="meal-chev">${isOpen ? '▴' : '▾'}</div>
       </button>
-      <nav class="nav" id="nav">
-        <a href="#mission" class="nav__link"><span class="nav__num">01</span> Mission</a>
-        <a href="#approach" class="nav__link"><span class="nav__num">02</span> Approach</a>
-        <a href="#thesis" class="nav__link"><span class="nav__num">03</span> Thesis</a>
-        <a href="#experience" class="nav__link"><span class="nav__num">04</span> Experience</a>
-        <a href="#portfolio" class="nav__link"><span class="nav__num">05</span> Portfolio</a>
-        <a href="#contact" class="nav__link nav__link--cta">Pitch Us <span class="arrow">&rarr;</span></a>
-      </nav>
-    </div>
-  </header>
-
-  <!-- ========== HERO ========== -->
-  <section class="hero" id="hero">
-    <canvas class="hero__canvas" id="heroCanvas"></canvas>
-    <div class="hero__glow" id="heroGlow"></div>
-
-    <!-- HUD ornaments -->
-    <div class="hud hud--tl"><span></span><span></span></div>
-    <div class="hud hud--tr"><span></span><span></span></div>
-    <div class="hud hud--bl"><span></span><span></span></div>
-    <div class="hud hud--br"><span></span><span></span></div>
-
-    <div class="container hero__content">
-      <figure class="hero__figure">
-        <h1 class="hero__heading">
-          Empowering Visionary Founders
-          <span class="hero__heading-accent">from Seed to Global Scale</span>
-        </h1>
-        <div class="hero__graphic" aria-hidden="true">
-          <svg class="hero__graphic-svg" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <linearGradient id="hg-line-grad" x1="0" y1="1" x2="1" y2="0">
-                <stop offset="0%"   stop-color="#1e6978" />
-                <stop offset="35%"  stop-color="#2bb3c9" />
-                <stop offset="70%"  stop-color="#38bdf8" />
-                <stop offset="100%" stop-color="#2876c4" />
-              </linearGradient>
-              <linearGradient id="hg-area-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stop-color="rgba(56,189,248,0.28)" />
-                <stop offset="100%" stop-color="rgba(56,189,248,0)" />
-              </linearGradient>
-              <filter id="hg-glow" x="-60%" y="-60%" width="220%" height="220%">
-                <feGaussianBlur stdDeviation="4" result="b" />
-                <feMerge>
-                  <feMergeNode in="b" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-              <pattern id="hg-grid" x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
-                <path d="M 48 0 L 0 0 0 48" fill="none" stroke="rgba(148,163,184,0.07)" stroke-width="1" />
-              </pattern>
-            </defs>
-
-            <!-- Grid backdrop -->
-            <rect x="0" y="0" width="900" height="340" fill="url(#hg-grid)" />
-
-            <!-- Baseline -->
-            <line x1="50" y1="280" x2="850" y2="280"
-                  stroke="rgba(148,163,184,0.18)" stroke-width="1" stroke-dasharray="3 6" />
-
-            <!-- Vertical drop lines from nodes to baseline -->
-            <g class="hg-drops">
-              <line x1="220" y1="220" x2="220" y2="280" />
-              <line x1="360" y1="170" x2="360" y2="280" />
-              <line x1="500" y1="120" x2="500" y2="280" />
-              <line x1="640" y1="75"  x2="640" y2="280" />
-              <line x1="780" y1="40"  x2="780" y2="280" />
-            </g>
-
-            <!-- Area fill under stepped path -->
-            <path class="hg-area"
-                  d="M 80,270 L 220,270 L 220,220 L 360,220 L 360,170 L 500,170 L 500,120 L 640,120 L 640,75 L 780,75 L 780,40 L 830,40 L 830,280 L 80,280 Z"
-                  fill="url(#hg-area-grad)" />
-
-            <!-- Stepped trajectory line -->
-            <path class="hg-line"
-                  d="M 80,270 L 220,270 L 220,220 L 360,220 L 360,170 L 500,170 L 500,120 L 640,120 L 640,75 L 780,75 L 780,40 L 830,40"
-                  fill="none"
-                  stroke="url(#hg-line-grad)"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  filter="url(#hg-glow)" />
-
-            <!-- Step nodes -->
-            <g class="hg-nodes">
-              <g class="hg-node" transform="translate(220, 220)">
-                <circle r="7" class="hg-node-outer" />
-                <circle r="3.5" class="hg-node-inner" />
-              </g>
-              <g class="hg-node" transform="translate(360, 170)">
-                <circle r="7" class="hg-node-outer" />
-                <circle r="3.5" class="hg-node-inner" />
-              </g>
-              <g class="hg-node" transform="translate(500, 120)">
-                <circle r="7" class="hg-node-outer" />
-                <circle r="3.5" class="hg-node-inner" />
-              </g>
-              <g class="hg-node" transform="translate(640, 75)">
-                <circle r="7" class="hg-node-outer" />
-                <circle r="3.5" class="hg-node-inner" />
-              </g>
-              <g class="hg-node hg-node--terminal" transform="translate(780, 40)">
-                <circle r="10" fill="none" stroke="rgba(56,189,248,0.5)" stroke-width="1">
-                  <animate attributeName="r" values="10;32" dur="2.4s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.85;0" dur="2.4s" repeatCount="indefinite" />
-                </circle>
-                <circle r="10" fill="none" stroke="rgba(56,189,248,0.5)" stroke-width="1">
-                  <animate attributeName="r" values="10;32" dur="2.4s" begin="1.2s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.85;0" dur="2.4s" begin="1.2s" repeatCount="indefinite" />
-                </circle>
-                <circle r="9" class="hg-node-terminal-ring" />
-                <circle r="4.5" fill="#ffffff" filter="url(#hg-glow)" />
-              </g>
-            </g>
-
-            <!-- Axis labels -->
-            <text x="80"  y="306" class="hg-label hg-label--left">SEED</text>
-            <text x="830" y="24"  text-anchor="end" class="hg-label hg-label--right">GLOBAL SCALE</text>
-
-            <!-- Increment tick marks -->
-            <g class="hg-ticks">
-              <text x="220" y="306" text-anchor="middle">01</text>
-              <text x="360" y="306" text-anchor="middle">02</text>
-              <text x="500" y="306" text-anchor="middle">03</text>
-              <text x="640" y="306" text-anchor="middle">04</text>
-              <text x="780" y="306" text-anchor="middle">05</text>
-            </g>
-          </svg>
-        </div>
-      </figure>
-      <p class="hero__sub">Increment Capital is a technology investment firm that fuses flexible capital with an active corporate development approach to investing in AI Infrastructure in Asia and the U.S.</p>
-      <div class="hero__actions">
-        <a href="#contact" class="btn btn--primary">
-          Pitch Us
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-        </a>
-        <a href="#approach" class="btn btn--ghost">Our Approach</a>
-      </div>
-
-      <!-- Data ticker -->
-      <div class="ticker" aria-hidden="true">
-        <div class="ticker__track">
-          <span class="ticker__item"><em>Hong Kong</em> 22.28°N &middot; 114.17°E</span>
-          <span class="ticker__item"><em>Shanghai</em> 31.23°N &middot; 121.47°E</span>
-          <span class="ticker__item"><em>Seattle</em> 47.61°N &middot; -122.33°E</span>
-          <span class="ticker__item"><em>Pre-Seed &rarr; IPO</em></span>
-          <span class="ticker__item"><em>Full AI Value Chain</em></span>
-          <span class="ticker__item"><em>LLM &middot; Infra &middot; Silicon &middot; Robotics</em></span>
-          <!-- duplicate -->
-          <span class="ticker__item"><em>Hong Kong</em> 22.28°N &middot; 114.17°E</span>
-          <span class="ticker__item"><em>Shanghai</em> 31.23°N &middot; 121.47°E</span>
-          <span class="ticker__item"><em>Seattle</em> 47.61°N &middot; -122.33°E</span>
-          <span class="ticker__item"><em>Pre-Seed &rarr; Series B</em></span>
-          <span class="ticker__item"><em>Full AI Value Chain</em></span>
-          <span class="ticker__item"><em>LLM &middot; Infra &middot; Silicon &middot; Robotics</em></span>
+      <div class="meal-body">
+        ${packTipHTML}
+        <h4>Ingredients</h4>
+        <ul>${ingredients}</ul>
+        <h4>Method</h4>
+        <ol>${steps}</ol>
+        <div class="rate-row">
+          <span class="label">After eating, rate it</span>
+          ${starsHTML(score, `${dayIdx}|${mealKey}`)}
         </div>
       </div>
-    </div>
+    </div>`;
+}
 
-  </section>
-
-  <!-- ========== MISSION ========== -->
-  <section class="section mission" id="mission">
-    <span class="section-id" aria-hidden="true">// 01 — mission</span>
-    <div class="container">
-      <span class="section__label">Our Mission</span>
-      <h2 class="section__title">Partnering with exceptional founders and management teams with flexible private equity and debt capital to build enduring technology businesses over time.</h2>
-
-      <!-- Partnership Trajectory Graphic -->
-      <div class="trajectory-wrap">
-        <svg class="trajectory-svg" viewBox="0 0 1000 440" preserveAspectRatio="xMidYMid meet" aria-labelledby="trajectory-title" role="img">
-          <title id="trajectory-title">Partnership and growth trajectory</title>
-
-          <defs>
-            <linearGradient id="curveGrad" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%"   stop-color="#2bb3c9" />
-              <stop offset="45%"  stop-color="#38bdf8" />
-              <stop offset="100%" stop-color="#2876c4" />
-            </linearGradient>
-            <linearGradient id="towerGrad" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0%"   stop-color="#1e6978" />
-              <stop offset="55%"  stop-color="#2bb3c9" />
-              <stop offset="100%" stop-color="#2876c4" />
-            </linearGradient>
-            <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%"   stop-color="rgba(56,189,248,0.6)" />
-              <stop offset="100%" stop-color="rgba(56,189,248,0)"   />
-            </radialGradient>
-            <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3" result="glow" />
-              <feMerge>
-                <feMergeNode in="glow" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <pattern id="dotGrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="0.8" fill="rgba(148,163,184,0.18)" />
-            </pattern>
-          </defs>
-
-          <!-- Backdrop -->
-          <rect x="0" y="0" width="1000" height="440" fill="url(#dotGrid)" />
-
-          <!-- Horizontal time axis -->
-          <line x1="70" y1="400" x2="930" y2="400" stroke="rgba(148,163,184,0.18)" stroke-width="1" stroke-dasharray="3 5"/>
-          <text x="70" y="422" class="tr-axis-label"></text>
-          <text x="930" y="422" text-anchor="end" class="tr-axis-label">TIME &rarr;</text>
-
-          <!-- Source: Founders -->
-          <g class="tr-source" transform="translate(95, 250)">
-            <circle r="36" class="tr-source-glow" />
-            <circle r="28" class="tr-source-ring" />
-            <circle r="22" class="tr-source-fill" />
-            <g transform="translate(-11, -11)" stroke="#e2e8f0" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-              <circle cx="11" cy="7" r="4" />
-            </g>
-            <text y="62" text-anchor="middle" class="tr-source-label">EXCEPTIONAL</text>
-            <text y="78" text-anchor="middle" class="tr-source-label">FOUNDERS</text>
-          </g>
-
-          <!-- Source: Capital -->
-          <g class="tr-source" transform="translate(95, 360)">
-            <circle r="36" class="tr-source-glow" />
-            <circle r="28" class="tr-source-ring" />
-            <circle r="22" class="tr-source-fill" />
-            <g transform="translate(-11, -11)" stroke="#e2e8f0" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20" />
-              <path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </g>
-            <text y="62" text-anchor="middle" class="tr-source-label">FLEXIBLE</text>
-            <text y="78" text-anchor="middle" class="tr-source-label">CAPITAL</text>
-          </g>
-
-          <!-- Converging lines to core -->
-          <path class="tr-converge" d="M 130,250 C 170,265 190,290 212,305" />
-          <path class="tr-converge" d="M 130,360 C 170,345 190,320 212,305" />
-
-          <!-- Central partnership core -->
-          <g transform="translate(220, 305)">
-            <circle r="48" fill="url(#coreGlow)" />
-            <circle r="28" class="tr-core-ring-3" />
-            <circle r="20" class="tr-core-ring-2" />
-            <circle r="12" class="tr-core-ring-1" fill="#38bdf8" filter="url(#softGlow)" />
-          </g>
-
-          <!-- Rising trajectory path -->
-          <path id="trajectoryPath" class="tr-curve-bg"
-                d="M 220,305 C 330,295 410,255 500,205 S 760,85 870,55" />
-          <path id="trajectoryPathFg" class="tr-curve-fg"
-                d="M 220,305 C 330,295 410,255 500,205 S 760,85 870,55" />
-
-          <!-- Milestone nodes along the trajectory -->
-          <g class="tr-milestone" transform="translate(340, 265)">
-            <circle r="7" />
-            <text x="0" y="-16" text-anchor="middle" class="tr-milestone-label">Seed</text>
-          </g>
-          <g class="tr-milestone" transform="translate(470, 217)">
-            <circle r="7" />
-            <text x="0" y="-16" text-anchor="middle" class="tr-milestone-label">Growth</text>
-          </g>
-          <g class="tr-milestone" transform="translate(605, 158)">
-            <circle r="7" />
-            <text x="0" y="-16" text-anchor="middle" class="tr-milestone-label">Pre-IPO</text>
-          </g>
-          <g class="tr-milestone" transform="translate(745, 96)">
-            <circle r="7" />
-            <text x="0" y="-16" text-anchor="middle" class="tr-milestone-label">Credit Solutions</text>
-          </g>
-
-          <!-- End state: Enduring Business (stacked towers) -->
-          <g class="tr-enduring" transform="translate(870, 55)">
-            <rect x="-34" y="-12" width="14" height="62" rx="2" fill="url(#towerGrad)" opacity="0.55" />
-            <rect x="-16" y="-30" width="14" height="80" rx="2" fill="url(#towerGrad)" opacity="0.80" />
-            <rect x="2"   y="-48" width="14" height="98" rx="2" fill="url(#towerGrad)" filter="url(#softGlow)" />
-            <rect x="20"  y="-22" width="14" height="72" rx="2" fill="url(#towerGrad)" opacity="0.70" />
-            <!-- Windows -->
-            <g fill="rgba(10,11,15,0.6)">
-              <rect x="-30" y="-4"  width="6" height="2" />
-              <rect x="-30" y="8"   width="6" height="2" />
-              <rect x="-30" y="20"  width="6" height="2" />
-              <rect x="-12" y="-22" width="6" height="2" />
-              <rect x="-12" y="-10" width="6" height="2" />
-              <rect x="-12" y="2"   width="6" height="2" />
-              <rect x="-12" y="14"  width="6" height="2" />
-              <rect x="-12" y="26"  width="6" height="2" />
-              <rect x="6"   y="-40" width="6" height="2" />
-              <rect x="6"   y="-28" width="6" height="2" />
-              <rect x="6"   y="-16" width="6" height="2" />
-              <rect x="6"   y="-4"  width="6" height="2" />
-              <rect x="6"   y="8"   width="6" height="2" />
-              <rect x="6"   y="20"  width="6" height="2" />
-              <rect x="6"   y="32"  width="6" height="2" />
-              <rect x="24"  y="-14" width="6" height="2" />
-              <rect x="24"  y="-2"  width="6" height="2" />
-              <rect x="24"  y="10"  width="6" height="2" />
-              <rect x="24"  y="22"  width="6" height="2" />
-            </g>
-            <text y="78" text-anchor="middle" class="tr-end-label">ENDURING BUSINESS</text>
-          </g>
-
-          <!-- Traveling particle along the trajectory -->
-          <circle class="tr-traveler" r="5" fill="#38bdf8" filter="url(#softGlow)">
-            <animateMotion dur="7s" repeatCount="indefinite" rotate="auto">
-              <mpath href="#trajectoryPath" />
-            </animateMotion>
-          </circle>
-          <circle class="tr-traveler-core" r="2.5" fill="#ffffff">
-            <animateMotion dur="7s" repeatCount="indefinite" rotate="auto">
-              <mpath href="#trajectoryPath" />
-            </animateMotion>
-          </circle>
-        </svg>
+function renderPlanTab() {
+  let warn = "";
+  if (WORKER_URL.includes("YOUR-WORKER-NAME")) {
+    warn = `<div class="config-warn"><b>Setup needed.</b> Edit <code>index.html</code> and set <code>WORKER_URL</code> at the top of the script to your deployed Cloudflare Worker URL (e.g. <code>https://meal-planner-proxy.yourname.workers.dev/plan</code>).</div>`;
+  }
+  if (state.loading && !state.plan) {
+    return warn + `<div class="loading-block"><div class="spinner"></div><p style="color:var(--muted);font-size:14px">Researching recipes and curating your week…</p></div>`;
+  }
+  if (!state.plan) {
+    return warn + `<div class="empty">
+      <h2>No plan yet</h2>
+      <p>Hit <em>Plan My First Week</em> above to generate your first set of school-friendly lunches, at-home dinners, and a consolidated grocery list.</p>
+    </div>`;
+  }
+  let out = warn + `<div class="week-theme">
+    <div class="eyebrow">This Week's Theme</div>
+    <h2>${esc(state.plan.weekTheme || 'Untitled week')}</h2>
+  </div>`;
+  (state.plan.days || []).forEach((day, idx) => {
+    out += `<div class="day-row">
+      <div class="day-label"><h3>${esc(day.day)}</h3><div class="underline"></div></div>
+      <div>
+        ${renderMealCard(day.lunch, 'lunch', idx)}
+        ${renderMealCard(day.dinner, 'dinner', idx)}
       </div>
+    </div>`;
+  });
+  return out;
+}
+
+function renderGroceryTab() {
+  if (!state.plan?.groceryList) {
+    return `<p style="color:var(--muted);font-size:14px">Generate a plan first to see your grocery list.</p>`;
+  }
+  const labelMap = { produce: "Produce", meat_seafood: "Meat & Seafood", pantry: "Pantry", dairy_eggs: "Dairy & Eggs", frozen: "Frozen", other: "Other" };
+  let out = `<div class="eyebrow">Shopping</div>
+    <h2 style="font-size:30px;font-weight:400;margin-bottom:6px">Grocery List</h2>
+    <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Consolidated across all meals this week.</p>
+    <div class="grocery-actions">
+      <button class="btn ghost" id="copyGroceryBtn">⎘ Copy as text</button>
     </div>
-  </section>
+    <div class="grocery-grid">`;
+  for (const [cat, items] of Object.entries(state.plan.groceryList)) {
+    if (!items?.length) continue;
+    out += `<div class="grocery-card">
+      <h3>${esc(labelMap[cat] || cat)}</h3>
+      <ul>${items.map(it => `<li><input type="checkbox"/><span>${esc(it)}</span></li>`).join("")}</ul>
+    </div>`;
+  }
+  out += `</div>`;
+  return out;
+}
 
-  <!-- ========== APPROACH ========== -->
-  <section class="section approach" id="approach">
-    <span class="section-id" aria-hidden="true">// 02 — approach</span>
-    <div class="container">
-      <span class="section__label">Investment Approach</span>
-      <h2 class="section__title section__title--left">Employing a sector driven approach, we invest in artificial intelligence and AI infrastructure businesses.</h2>
-
-      <div class="approach__grid">
-        <!-- Card 1 -->
-        <div class="card" data-animate>
-          <span class="card__index">01</span>
-          <div class="card__icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          </div>
-          <h3 class="card__title">Enabling Founders</h3>
-          <p class="card__text">We invest at the genesis of innovation, often at pre-seed or seed, across the entire AI value chain.</p>
-          <span class="card__corner card__corner--tl"></span>
-          <span class="card__corner card__corner--tr"></span>
-          <span class="card__corner card__corner--bl"></span>
-          <span class="card__corner card__corner--br"></span>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="card" data-animate>
-          <span class="card__index">02</span>
-          <div class="card__icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-          </div>
-          <h3 class="card__title">Long-term Capital Partnership</h3>
-          <p class="card__text">We continue support with creative equity and debt capital solutions with ecosystem partners to source and scale outliers.</p>
-          <span class="card__corner card__corner--tl"></span>
-          <span class="card__corner card__corner--tr"></span>
-          <span class="card__corner card__corner--bl"></span>
-          <span class="card__corner card__corner--br"></span>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="card" data-animate>
-          <span class="card__index">03</span>
-          <div class="card__icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-          </div>
-          <h3 class="card__title">Active, Sector-driven</h3>
-          <p class="card__text">A long-term strategic partner, we invest where we have unique insights to source and scale outliers: industry defining LLMs, AI tooling and inference, AI-optimized semiconductors, vertical AI businesses, Blockchain x AI applications, digital infrastructure, robotics, advanced power generation and cooling.  <br><br> In-house corporate development capabilities to help accelerate growth through strategic acquisitions, operational improvement and AI/technology adoption.</p>
-          <span class="card__corner card__corner--tl"></span>
-          <span class="card__corner card__corner--tr"></span>
-          <span class="card__corner card__corner--bl"></span>
-          <span class="card__corner card__corner--br"></span>
-        </div>
+function renderLearningTab() {
+  const L = buildLearningSignal(state.scores);
+  function sentimentList(obj) {
+    const entries = Object.entries(obj).sort((a,b) => b[1]-a[1]);
+    if (!entries.length) return `<li style="color:var(--muted);font-style:italic">Not enough ratings yet.</li>`;
+    return entries.map(([k,v]) => {
+      const cls = v > 0 ? "pos" : v < 0 ? "neg" : "neu";
+      return `<li class="stat-row"><span>${esc(k)}</span><span class="${cls}">${v > 0 ? '+' : ''}${v.toFixed(1)}</span></li>`;
+    }).join("");
+  }
+  return `
+    <div class="eyebrow">What the Agent Has Learned</div>
+    <h2 style="font-size:30px;font-weight:400;margin-bottom:6px">Your Taste Profile</h2>
+    <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">The agent uses these signals to bias next week's recipe research.</p>
+    <div class="grocery-grid">
+      <div class="stat-card">
+        <h3>Loved (4–5★)</h3>
+        <ul>${L.loved.length ? L.loved.map(n => `<li>· ${esc(n)}</li>`).join("") : `<li style="color:var(--muted);font-style:italic">Rate meals to teach the agent.</li>`}</ul>
       </div>
-    </div>
-  </section>
-
-  <!-- ========== THESIS (AI VALUE CHAIN) ========== -->
-  <section class="section thesis" id="thesis">
-    <span class="section-id" aria-hidden="true">// 03 — thesis</span>
-    <div class="container">
-      <span class="section__label">AI Value Chain</span>
-      <h2 class="section__title">Investing Across the Full AI Stack</h2>
-
-      <!-- Terminal console -->
-      <div class="console" aria-hidden="true">
-        <div class="console__bar">
-          <span class="console__dot"></span>
-          <span class="console__dot"></span>
-          <span class="console__dot"></span>
-          <span class="console__title">increment.thesis &mdash; ~/ai-value-chain</span>
-        </div>
-        <div class="console__body">
-          <div class="console__line"><span class="console__prompt">$</span> <span class="console__cmd">query --stack=ai --layer=full</span></div>
-          <div class="console__line console__line--dim">&gt; scanning value chain...</div>
-          <div class="console__line console__line--ok">&gt; 8 layers &middot; full-stack coverage &middot; <span class="console__highlight">active</span></div>
-          <div class="console__line"><span class="console__prompt">$</span> <span class="console__caret"></span></div>
-        </div>
+      <div class="stat-card">
+        <h3>Disliked (1–2★)</h3>
+        <ul>${L.disliked.length ? L.disliked.map(n => `<li>· ${esc(n)}</li>`).join("") : `<li style="color:var(--muted);font-style:italic">Nothing here yet.</li>`}</ul>
       </div>
-
-      <div class="thesis__grid">
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">LLM</span>
-          <span class="thesis__name">Foundation Models</span>
-        </div>
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">&lt;/&gt;</span>
-          <span class="thesis__name">AI Tooling &amp; Inference</span>
-        </div>
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">&#9670;</span>
-          <span class="thesis__name">AI Semiconductors</span>
-        </div>
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">&#9041;</span>
-          <span class="thesis__name">Vertical AI Autonomy</span>
-        </div>
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">&#8734;</span>
-          <span class="thesis__name">Blockchain x AI</span>
-        </div>
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">&#9881;</span>
-          <span class="thesis__name">Digital Infrastructure</span>
-        </div>
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">&#9737;</span>
-          <span class="thesis__name">Robotics</span>
-        </div>
-        <div class="thesis__item" data-animate>
-          <span class="thesis__icon">&#9889;</span>
-          <span class="thesis__name">Power &amp; Cooling</span>
-        </div>
+      <div class="stat-card">
+        <h3>Cuisine Sentiment</h3>
+        <ul>${sentimentList(L.cuisinePref)}</ul>
       </div>
-    </div>
-  </section>
-
-  <!-- ========== EXPERIENCE ========== -->
-  <section class="section experience" id="experience">
-    <span class="section-id" aria-hidden="true">// 04 — experience</span>
-    <div class="container">
-      <span class="section__label">Why Increment</span>
-      <h2 class="section__title section__title--left">World Class Investment Experience</h2>
-      <p class="approach__sub">Our investment approach in early-to-growth stage companies is informed by collective experience across early-stage venture, growth equity, buyouts, PIPEs, special situations credit, operational turnarounds, spin-offs and restructurings.</p>
-
-      <div class="experience__grid">
-        <div class="exp-card" data-animate>
-          <h4 class="exp-card__title">Multidisciplinary Background</h4>
-          <p class="exp-card__text">Venture, Private Equity, Private Credit, Special Situations — a flexible, multi-asset approach to funding innovation at every stage.</p>
-        </div>
-        <div class="exp-card" data-animate>
-          <h4 class="exp-card__title">Top-Tier Institutional Experience</h4>
-          <p class="exp-card__text">Unique blend of public and private investment experience at world class organizations including Warburg Pincus, Clearlake Capital, Goldman Sachs, UBS and JPMorgan.</p>
-        </div>
-        <div class="exp-card" data-animate>
-          <h4 class="exp-card__title">Technology Focus</h4>
-          <p class="exp-card__text">Employing a sector driven approach, we invest in consumer technology, blockchain, artificial intelligence and AI/Digital infrastructure businesses.</p>
-        </div>
-        <div class="exp-card" data-animate>
-          <h4 class="exp-card__title">Deep Technical Expertise</h4>
-          <p class="exp-card__text">Strong technical expertise from leaders at Google, Microsoft, Amazon, and AMD — enabling diligence and value creation at every stage.</p>
-        </div>
+      <div class="stat-card">
+        <h3>Protein Sentiment</h3>
+        <ul>${sentimentList(L.proteinPref)}</ul>
       </div>
-    </div>
-  </section>
+    </div>`;
+}
 
-  <!-- ========== PORTFOLIO ========== -->
-  <section class="section portfolio" id="portfolio">
-    <span class="section-id" aria-hidden="true">// 05 — portfolio</span>
-    <div class="container">
-      <span class="section__label">Portfolio</span>
-      <h2 class="section__title">Our partners collectively invest early in technical pioneers and grow alongside founders, scaling regional innovations into worldwide industry leaders.</h2>
-      <p class="portfolio__sub">Together with our capital and ecosystem partners, we support companies from Seed to IPO to build enduring global technology businesses.</p>
-      <div class="portfolio__marquee">
-        <div class="portfolio__track">
-          <span class="portfolio__company">Klook</span>
-          <span class="portfolio__company">Gbike</span>
-          <span class="portfolio__company">XtalPi</span>
-          <span class="portfolio__company">OmniML</span>
-          <span class="portfolio__company">Conflux</span>
-          <span class="portfolio__company">SGLang</span>
-          <span class="portfolio__company">EigenAI</span>
-          <span class="portfolio__company">Infinigence</span>
-          <span class="portfolio__company">Anthropic</span>
-          <span class="portfolio__company">IDA</span>
-          <span class="portfolio__company">Innomatrix</span>
-          <span class="portfolio__company">Nunchaku AI</span>
-          <span class="portfolio__company">Tornado AI</span>
-          <span class="portfolio__company">Atto Research</span>
-          <span class="portfolio__company">Votee AI</span>
-          <span class="portfolio__company">Falcon Alpha</span>
-          <span class="portfolio__company">GetLinks</span>
-          <span class="portfolio__company">Good Catch</span>
-          <span class="portfolio__company">Zetta</span>
-          <!-- duplicate set for seamless loop -->
-          <span class="portfolio__company">Klook</span>
-          <span class="portfolio__company">Gbike</span>
-          <span class="portfolio__company">XtalPi</span>
-          <span class="portfolio__company">OmniML</span>
-          <span class="portfolio__company">Conflux</span>
-          <span class="portfolio__company">SGLang</span>
-          <span class="portfolio__company">EigenAI</span>
-          <span class="portfolio__company">Infinigence</span>
-          <span class="portfolio__company">Anthropic</span>
-          <span class="portfolio__company">IDA</span>
-          <span class="portfolio__company">Innomatrix</span>
-          <span class="portfolio__company">Nunchaku AI</span>
-          <span class="portfolio__company">Tornado AI</span>
-          <span class="portfolio__company">Atto Research</span>
-          <span class="portfolio__company">Votee AI</span>
-          <span class="portfolio__company">Falcon Alpha</span>
-          <span class="portfolio__company">GetLinks</span>
-          <span class="portfolio__company">Good Catch</span>
-          <span class="portfolio__company">Zetta</span>
-        </div>
+function renderHistoryTab() {
+  let out = `<div class="row" style="margin-bottom:24px;align-items:flex-end">
+    <div>
+      <div class="eyebrow">Past Weeks</div>
+      <h2 style="font-size:30px;font-weight:400">History</h2>
+    </div>
+    ${state.history.length ? `<button class="btn danger" id="clearAllBtn">⊗ Clear all</button>` : ""}
+  </div>`;
+  if (!state.history.length) {
+    out += `<p style="font-size:14px;color:var(--muted);font-style:italic">No past weeks yet.</p>`;
+    return out;
+  }
+  [...state.history].reverse().forEach((h, i) => {
+    const idx = state.history.length - 1 - i;
+    const date = new Date(h.generatedAt).toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+    out += `<div class="history-item">
+      <div>
+        <h4>${esc(h.plan?.weekTheme || 'Untitled week')}</h4>
+        <p>${esc(date)}</p>
       </div>
-    </div>
-  </section>
+      <button class="btn ghost" data-view-history="${idx}">↻ View</button>
+    </div>`;
+  });
+  return out;
+}
 
-  <!-- ========== CONTACT ========== -->
-  <section class="section contact" id="contact">
-    <span class="section-id" aria-hidden="true">// 06 — contact</span>
-    <div class="container contact__inner">
-      <span class="section__label">Get In Touch</span>
-      <h2 class="section__title">Have a compelling AI company?<br />We'd love to hear from you.</h2>
-      <a href="mailto:info@incrementcap.com" class="btn btn--primary btn--lg">
-        Pitch Us
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-      </a>
-      <p class="contact__locations">Hong Kong &middot; Shanghai &middot; Seattle</p>
-    </div>
-  </section>
+function renderSettingsTab() {
+  return `
+    <div class="eyebrow">Preferences</div>
+    <h2 style="font-size:30px;font-weight:400;margin-bottom:24px">Settings</h2>
+    <div style="max-width:520px">
+      <label class="field">
+        <span>Days per week to plan</span>
+        <input type="number" id="daysInput" min="3" max="7" value="${state.prefs.daysCount}"/>
+      </label>
+      <label class="field">
+        <span>Restrictions / allergies</span>
+        <input type="text" id="restrictionsInput" placeholder="e.g. no shellfish, low sodium" value="${esc(state.prefs.restrictions)}"/>
+      </label>
+      <label class="field">
+        <span>Notes for the agent</span>
+        <textarea id="notesInput" rows="3" placeholder="e.g. love spicy, cooking for 2, kid-friendly">${esc(state.prefs.notes)}</textarea>
+      </label>
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--line)">
+        <p style="font-size:11px;text-transform:uppercase;letter-spacing:0.18em;color:var(--muted);margin-bottom:8px">Access password</p>
+        <p style="font-size:13px;color:var(--ink-2);margin-bottom:12px">${state.password ? `Saved (ends in <code>…${esc(state.password.slice(-4))}</code>)` : "Not set."}</p>
+        <button class="btn ghost" id="changePwdBtn">${state.password ? "Change password" : "Set password"}</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);font-style:italic;margin-top:24px">Settings save automatically.</p>
+    </div>`;
+}
 
-  <!-- ========== FOOTER ========== -->
-  <footer class="footer">
-    <div class="container footer__inner">
-      <a href="#" class="footer__logo" aria-label="Increment Capital home">
-        <svg class="logo-svg logo-svg--sm"><use href="#ic-logo"/></svg>
-      </a>
-      <nav class="footer__nav">
-        <a href="#mission">Mission</a>
-        <a href="#approach">Approach</a>
-        <a href="#thesis">Thesis</a>
-        <a href="#portfolio">Portfolio</a>
-        <a href="#contact">Contact</a>
-      </nav>
-      <p class="footer__copy">&copy; 2026 Increment Capital. All rights reserved.</p>
-    </div>
-  </footer>
+function renderTabs() {
+  document.querySelectorAll("nav.tabs button").forEach(b => {
+    b.classList.toggle("active", b.dataset.tab === state.tab);
+  });
+}
 
-  <script src="script.js"></script>
+function render() {
+  const btn = document.getElementById("generateBtn");
+  const label = document.getElementById("generateLabel");
+  if (state.loading) {
+    btn.disabled = true; label.textContent = "Curating your week…";
+  } else {
+    btn.disabled = false; label.textContent = state.history.length ? "Generate New Week" : "Plan My First Week";
+  }
+  renderTabs();
+
+  let html = "";
+  if (state.tab === "plan") html = renderPlanTab();
+  else if (state.tab === "grocery") html = renderGroceryTab();
+  else if (state.tab === "learning") html = renderLearningTab();
+  else if (state.tab === "history") html = renderHistoryTab();
+  else if (state.tab === "settings") html = renderSettingsTab();
+  document.getElementById("content").innerHTML = html;
+
+  attachContentHandlers();
+}
+
+function attachContentHandlers() {
+  document.querySelectorAll("[data-toggle]").forEach(el => {
+    el.addEventListener("click", () => toggleMeal(el.dataset.toggle));
+  });
+  document.querySelectorAll(".stars").forEach(group => {
+    group.querySelectorAll("button[data-rate]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const [dayIdx, mealKey] = group.dataset.mealKey.split("|");
+        const meal = state.plan?.days?.[parseInt(dayIdx,10)]?.[mealKey];
+        const rating = parseInt(btn.dataset.rate, 10);
+        const current = state.scores[meal?.name]?.score || 0;
+        rateMeal(meal, Math.round(current) === rating ? 0 : rating);
+      });
+    });
+  });
+  document.querySelectorAll("[data-view-history]").forEach(b => {
+    b.addEventListener("click", () => {
+      const idx = parseInt(b.dataset.viewHistory, 10);
+      state.plan = state.history[idx]?.plan || state.plan;
+      state.tab = "plan"; render();
+    });
+  });
+  const clearBtn = document.getElementById("clearAllBtn");
+  if (clearBtn) clearBtn.addEventListener("click", clearAll);
+
+  const daysInput = document.getElementById("daysInput");
+  if (daysInput) daysInput.addEventListener("change", (e) => {
+    state.prefs.daysCount = Math.max(3, Math.min(7, parseInt(e.target.value || "5", 10)));
+    save(K_PREFS, state.prefs);
+  });
+  const rIn = document.getElementById("restrictionsInput");
+  if (rIn) rIn.addEventListener("input", (e) => { state.prefs.restrictions = e.target.value; save(K_PREFS, state.prefs); });
+  const nIn = document.getElementById("notesInput");
+  if (nIn) nIn.addEventListener("input", (e) => { state.prefs.notes = e.target.value; save(K_PREFS, state.prefs); });
+  const cp = document.getElementById("changePwdBtn");
+  if (cp) cp.addEventListener("click", openPasswordModal);
+
+  const cg = document.getElementById("copyGroceryBtn");
+  if (cg) cg.addEventListener("click", () => {
+    const labelMap = { produce: "Produce", meat_seafood: "Meat & Seafood", pantry: "Pantry", dairy_eggs: "Dairy & Eggs", frozen: "Frozen", other: "Other" };
+    let txt = `Grocery list — ${state.plan.weekTheme}\n\n`;
+    for (const [cat, items] of Object.entries(state.plan.groceryList)) {
+      if (!items?.length) continue;
+      txt += `${labelMap[cat] || cat}\n`;
+      for (const it of items) txt += `  • ${it}\n`;
+      txt += "\n";
+    }
+    navigator.clipboard.writeText(txt).then(() => {
+      cg.textContent = "✓ Copied";
+      setTimeout(() => { cg.textContent = "⎘ Copy as text"; }, 1500);
+    });
+  });
+}
+
+render();
+</script>
 </body>
 </html>
