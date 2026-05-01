@@ -137,6 +137,7 @@
       </div>
       <button class="btn" id="generateBtn">✦ <span id="generateLabel">Plan My First Week</span></button>
     </div>
+    <div id="syncIndicator" style="font-size:11px;color:var(--muted);margin-top:8px;height:14px"></div>
     <nav class="tabs" id="tabs">
       <button data-tab="plan" class="active">This Week</button>
       <button data-tab="grocery">Grocery List</button>
@@ -179,7 +180,7 @@
 // ============================================================
 // CONFIG — edit this once after deploying the Worker.
 // ============================================================
-const WORKER_URL = "https://meal-planner-proxy.vlallstar.workers.dev/plan";
+const WORKER_URL = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev/plan";
 
 // ============================================================
 // STATE & STORAGE
@@ -188,6 +189,7 @@ const K_HISTORY = "mp:history:v5";
 const K_SCORES  = "mp:scores:v5";
 const K_PREFS   = "mp:prefs:v5";
 const K_PWD     = "mp:pwd:v1";
+const K_PROFILE = "mp:profile:v1";
 
 const state = {
   tab: "plan",
@@ -197,7 +199,10 @@ const state = {
   prefs: load(K_PREFS, { daysCount: 5, restrictions: "", notes: "" }),
   plan: null,
   openMeals: new Set(),
-  password: localStorage.getItem(K_PWD) || ""
+  password: localStorage.getItem(K_PWD) || "",
+  profile: localStorage.getItem(K_PROFILE) || "",
+  syncStatus: "idle",   // "idle" | "loading" | "syncing" | "synced" | "error"
+  syncError: ""
 };
 state.plan = state.history.length ? state.history[state.history.length - 1].plan : null;
 
@@ -206,6 +211,83 @@ function load(key, fallback) {
   catch { return fallback; }
 }
 function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.error(e); } }
+
+// ============================================================
+// PROFILE SYNC — pulls/pushes scores+history+prefs to the Worker's KV
+// ============================================================
+function profileEndpoint() {
+  if (!state.profile) return null;
+  return WORKER_URL.replace(/\/plan$/, "/data") + "?profile=" + encodeURIComponent(state.profile);
+}
+
+function authHeaders() {
+  const h = { "Content-Type": "application/json" };
+  if (state.password) h["X-Access-Password"] = state.password;
+  return h;
+}
+
+async function pullProfile() {
+  const ep = profileEndpoint();
+  if (!ep) return;
+  state.syncStatus = "loading"; state.syncError = ""; renderSyncIndicator();
+  try {
+    const res = await fetch(ep, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`pull ${res.status}`);
+    const body = await res.json();
+    if (body.data) {
+      // Server has data — overwrite local
+      state.scores  = body.data.scores  || {};
+      state.history = body.data.history || [];
+      state.prefs   = body.data.prefs   || state.prefs;
+      state.plan = state.history.length ? state.history[state.history.length - 1].plan : null;
+      save(K_SCORES, state.scores);
+      save(K_HISTORY, state.history);
+      save(K_PREFS, state.prefs);
+    } else {
+      // Server has nothing for this profile — push our local data up so this device "claims" it
+      await pushProfile();
+    }
+    state.syncStatus = "synced";
+  } catch (e) {
+    console.error("pullProfile failed", e);
+    state.syncStatus = "error";
+    state.syncError = e.message || "Sync failed";
+  }
+  renderSyncIndicator();
+  render();
+}
+
+let _pushTimer = null;
+function schedulePush() {
+  if (!state.profile) return;
+  if (_pushTimer) clearTimeout(_pushTimer);
+  state.syncStatus = "syncing"; renderSyncIndicator();
+  _pushTimer = setTimeout(() => { pushProfile(); }, 1500);
+}
+
+async function pushProfile() {
+  const ep = profileEndpoint();
+  if (!ep) return;
+  try {
+    const body = JSON.stringify({
+      scores: state.scores,
+      history: state.history,
+      prefs: state.prefs,
+      updatedAt: Date.now()
+    });
+    const res = await fetch(ep, { method: "POST", headers: authHeaders(), body });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`push ${res.status}: ${t.slice(0,120)}`);
+    }
+    state.syncStatus = "synced"; state.syncError = "";
+  } catch (e) {
+    console.error("pushProfile failed", e);
+    state.syncStatus = "error";
+    state.syncError = e.message || "Sync failed";
+  }
+  renderSyncIndicator();
+}
 
 // ============================================================
 // LEARNING / SCORING SIGNALS
@@ -392,6 +474,7 @@ async function runWeek() {
     state.plan = plan;
     state.openMeals.clear();
     save(K_HISTORY, state.history);
+    schedulePush();
     state.tab = "plan";
   } catch (e) {
     console.error(e);
@@ -408,6 +491,7 @@ function rateMeal(meal, value) {
   const newScore = ex ? ((ex.score * ex.count) + value) / newCount : value;
   state.scores[meal.name] = { score: newScore, count: newCount, cuisine: meal.cuisine, protein: meal.protein };
   save(K_SCORES, state.scores);
+  schedulePush();
   render();
 }
 
@@ -415,6 +499,7 @@ function clearAll() {
   if (!confirm("Clear all history and ratings? This can't be undone.")) return;
   state.history = []; state.scores = {}; state.plan = null;
   save(K_HISTORY, []); save(K_SCORES, {});
+  schedulePush();
   render();
 }
 
@@ -629,10 +714,28 @@ function renderHistoryTab() {
 }
 
 function renderSettingsTab() {
+  const syncBadge = state.profile
+    ? `<span style="font-size:11px;color:${state.syncStatus === 'error' ? 'var(--bad)' : state.syncStatus === 'synced' ? 'var(--good)' : 'var(--muted)'};margin-left:8px">
+         ${state.syncStatus === 'idle' ? '' :
+           state.syncStatus === 'loading' ? '· loading…' :
+           state.syncStatus === 'syncing' ? '· syncing…' :
+           state.syncStatus === 'synced' ? '· synced' :
+           '· ' + esc(state.syncError || 'sync error')}
+       </span>`
+    : "";
+
   return `
     <div class="eyebrow">Preferences</div>
     <h2 style="font-size:30px;font-weight:400;margin-bottom:24px">Settings</h2>
     <div style="max-width:520px">
+      <label class="field">
+        <span>Profile name (cross-device sync) ${syncBadge}</span>
+        <input type="text" id="profileInput" placeholder="e.g. vlam-kitchen" value="${esc(state.profile)}" autocomplete="off"/>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">
+          Set the same profile name on every device to sync your ratings and history. 2–40 chars, lowercase letters / numbers / dash / underscore.
+          Leave blank to keep data on this device only.
+        </p>
+      </label>
       <label class="field">
         <span>Days per week to plan</span>
         <input type="number" id="daysInput" min="3" max="7" value="${state.prefs.daysCount}"/>
@@ -679,6 +782,7 @@ function render() {
   document.getElementById("content").innerHTML = html;
 
   attachContentHandlers();
+  renderSyncIndicator();
 }
 
 function attachContentHandlers() {
@@ -711,13 +815,36 @@ function attachContentHandlers() {
   if (daysInput) daysInput.addEventListener("change", (e) => {
     state.prefs.daysCount = Math.max(3, Math.min(7, parseInt(e.target.value || "5", 10)));
     save(K_PREFS, state.prefs);
+    schedulePush();
   });
   const rIn = document.getElementById("restrictionsInput");
-  if (rIn) rIn.addEventListener("input", (e) => { state.prefs.restrictions = e.target.value; save(K_PREFS, state.prefs); });
+  if (rIn) rIn.addEventListener("input", (e) => { state.prefs.restrictions = e.target.value; save(K_PREFS, state.prefs); schedulePush(); });
   const nIn = document.getElementById("notesInput");
-  if (nIn) nIn.addEventListener("input", (e) => { state.prefs.notes = e.target.value; save(K_PREFS, state.prefs); });
+  if (nIn) nIn.addEventListener("input", (e) => { state.prefs.notes = e.target.value; save(K_PREFS, state.prefs); schedulePush(); });
   const cp = document.getElementById("changePwdBtn");
   if (cp) cp.addEventListener("click", openPasswordModal);
+
+  // Profile name: on blur (not every keystroke) — sanitize, save, pull data from server
+  const profileIn = document.getElementById("profileInput");
+  if (profileIn) {
+    profileIn.addEventListener("blur", async (e) => {
+      const raw = e.target.value.trim().toLowerCase();
+      const cleaned = raw.replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+      if (cleaned === state.profile) return; // no change
+      state.profile = cleaned;
+      if (cleaned) {
+        localStorage.setItem(K_PROFILE, cleaned);
+        await pullProfile();
+      } else {
+        localStorage.removeItem(K_PROFILE);
+        state.syncStatus = "idle";
+        render();
+      }
+    });
+    profileIn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); profileIn.blur(); }
+    });
+  }
 
   const cg = document.getElementById("copyGroceryBtn");
   if (cg) cg.addEventListener("click", () => {
@@ -736,7 +863,29 @@ function attachContentHandlers() {
   });
 }
 
+function renderSyncIndicator() {
+  const el = document.getElementById("syncIndicator");
+  if (!el) return;
+  if (!state.profile) {
+    el.innerHTML = `<span style="color:var(--muted)">⚬ No profile set — data lives only on this device. <a href="#" id="goToSettings" style="color:var(--ink);text-decoration:underline">Set profile to sync</a>.</span>`;
+    const link = document.getElementById("goToSettings");
+    if (link) link.addEventListener("click", (e) => { e.preventDefault(); setTab("settings"); });
+    return;
+  }
+  const colors = { idle:"var(--muted)", loading:"var(--muted)", syncing:"var(--muted)", synced:"var(--good)", error:"var(--bad)" };
+  const labels = {
+    idle: `Profile: ${state.profile}`,
+    loading: `Profile: ${state.profile} · loading…`,
+    syncing: `Profile: ${state.profile} · syncing…`,
+    synced: `Profile: ${state.profile} · synced ✓`,
+    error: `Profile: ${state.profile} · sync error: ${state.syncError}`
+  };
+  el.innerHTML = `<span style="color:${colors[state.syncStatus]}">${esc(labels[state.syncStatus])}</span>`;
+}
+
 render();
+renderSyncIndicator();
+if (state.profile) { pullProfile(); }
 </script>
 </body>
 </html>
