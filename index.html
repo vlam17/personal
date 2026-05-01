@@ -339,8 +339,16 @@ async function generatePlan() {
   try { data = JSON.parse(bodyText); }
   catch { throw new Error(`Server returned non-JSON: ${bodyText.slice(0,200)}`); }
 
-  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
-  if (!text) throw new Error(`Empty response. stop_reason=${data.stop_reason}`);
+  // DeepSeek (OpenAI-format) response: data.choices[0].message.content
+  // Falls back to Anthropic-format for compatibility if you ever swap the backend back.
+  let text = "";
+  if (data?.choices?.[0]?.message?.content) {
+    text = String(data.choices[0].message.content).trim();
+  } else if (Array.isArray(data?.content)) {
+    text = data.content.filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+  }
+  const finishReason = data?.choices?.[0]?.finish_reason || data?.stop_reason || "unknown";
+  if (!text) throw new Error(`Empty response. finish_reason=${finishReason}`);
 
   let cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   const start = cleaned.indexOf("{");
